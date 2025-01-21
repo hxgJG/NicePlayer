@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     kotlin("plugin.serialization") version "1.9.20"
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -18,6 +19,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+            arg("room.incremental", "true")
         }
     }
 
@@ -41,7 +47,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.5"
     }
     packaging {
         resources {
@@ -64,9 +70,9 @@ dependencies {
     implementation(libs.accompanist.pager)
     implementation(libs.androidx.recyclerview)
 
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil.compose)
 
     compileOnly(libs.androidx.media3.exoplayer)
 
@@ -82,5 +88,12 @@ dependencies {
     implementation(project(":media"))
 
     implementation(libs.xxpermissions)
+
+    implementation(libs.androidx.room.runtime)
+    // If this project uses any Kotlin source, use Kotlin Symbol Processing (KSP)
+    // See Add the KSP plugin to your project
+    ksp(libs.androidx.room.compiler)
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation(libs.androidx.room.ktx)
 
 }
