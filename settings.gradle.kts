@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NiceVoice"
+rootProject.name = "NicePlayer"
 include(":app")
 include(":media")

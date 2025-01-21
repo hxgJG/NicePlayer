@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import com.hxg.media.player.XPlayer
-import com.hxg.player.ui.theme.NiceVoiceTheme
+import com.hxg.player.ui.theme.NicePlayerTheme
 import com.hxg.player.util.Constants
 
 class AudioPlayerActivity : ComponentActivity() {
@@ -50,7 +50,7 @@ class AudioPlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            NiceVoiceTheme {
+            NicePlayerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

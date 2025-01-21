@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
-import com.hxg.player.ui.theme.NiceVoiceTheme
+import com.hxg.player.ui.theme.NicePlayerTheme
 import com.hxg.player.ui.widget.HomeView
 import com.hxg.player.util.toast
 import kotlinx.coroutines.runBlocking
@@ -21,7 +21,7 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            NiceVoiceTheme {
+            NicePlayerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
