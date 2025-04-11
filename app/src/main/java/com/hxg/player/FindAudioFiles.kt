@@ -1,21 +1,45 @@
 package com.hxg.player
 
+import android.content.Context
 import android.database.Cursor
+import android.media.MediaScannerConnection
 import android.net.Uri
-import android.os.Parcel
-import android.os.Parcelable
 import android.provider.MediaStore
+import androidx.compose.runtime.mutableStateListOf
+import com.hxg.player.entity.AudioFile
+import com.hxg.player.util.mainScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object FindAudioFiles {
-    private var mAudioFiles: MutableList<AudioFile> = mutableListOf()
+    private var mAudioFiles: MutableList<AudioFile> = mutableStateListOf()
 
     fun getAudioFiles(): MutableList<AudioFile> {
         return mAudioFiles
     }
 
     fun queryAudioFiles() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val context = App.context
+            val dataContainer = AppDataContainer.getInstance(context)
+            dataContainer.audioInfosRepository.getAllItemsStream().collect { list ->
+                mAudioFiles.clear()
+                mAudioFiles.addAll(
+                    list.map { info ->
+                        info.toAudioFile()
+                    }
+                )
+                if (mAudioFiles.isEmpty()) {
+                    queryAudioFiles(context, dataContainer, false)
+                }
+            }
+        }
+    }
+
+    private suspend fun queryAudioFiles(context: Context, dataContainer: AppDataContainer, isAfterScan: Boolean) {
         // 获取 ContentResolver 实例
-        val contentResolver = App.context.contentResolver
+        val contentResolver = context.contentResolver
 
         // 定义查询的 URI 和列
         val audioUri: Uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
@@ -44,6 +68,7 @@ object FindAudioFiles {
             val dataColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
             val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
 
+            val list = mutableListOf<AudioFile>()
             // 遍历 Cursor
             while (it.moveToNext()) {
                 val id = it.getLong(idColumn)
@@ -56,70 +81,25 @@ object FindAudioFiles {
                 val albumId = it.getLong(albumIdColumn)
 
                 // 音频文件信息
-                mAudioFiles.add(AudioFile(id, title, artist, album, duration, size, data, albumId))
+                val audioFile = AudioFile(id, title, artist, album, duration, size, data, albumId)
+                list.add(audioFile)
+                dataContainer.audioInfosRepository.insertItem(audioFile.toAudioInfo())
             }
-        }
-    }
-}
 
-data class AudioFile(
-    val id: Long,
-    val title: String,
-    val artist: String,
-    val album: String,
-    val duration: Int,
-    val size: Long,
-    val path: String,
-    val albumArtId: Long
-) : Parcelable {
-    private val baseAlbumArtUri = Uri.parse("content://media/external/audio/albumart")
-
-    constructor(parcel: Parcel) : this(
-        parcel.readLong(),
-        parcel.readString() ?: "",
-        parcel.readString() ?: "",
-        parcel.readString() ?: "",
-        parcel.readInt(),
-        parcel.readLong(),
-        parcel.readString() ?: "",
-        parcel.readLong()
-    )
-
-    override fun toString(): String {
-        return "AudioFile(id=$id, title=$title, artist=$artist, album=$album, duration=$duration, size=$size, path=$path, albumArtId=$albumArtId)"
-    }
-
-    override fun describeContents(): Int {
-        return 0
-    }
-
-    fun getAlbumArt(): Uri {
-        val albumArtUri = Uri.withAppendedPath(baseAlbumArtUri, albumArtId.toString())
-        return albumArtUri
-    }
-
-    override fun writeToParcel(dest: Parcel, flags: Int) {
-        dest.writeLong(id)
-        dest.writeString(title)
-        dest.writeString(artist)
-        dest.writeString(album)
-        dest.writeInt(duration)
-        dest.writeLong(size)
-        dest.writeString(path)
-        dest.writeLong(albumArtId)
-    }
-
-    fun isValid(): Boolean {
-        return path.isNotEmpty() && size > 0
-    }
-
-    companion object CREATOR : Parcelable.Creator<AudioFile> {
-        override fun createFromParcel(parcel: Parcel): AudioFile {
-            return AudioFile(parcel)
-        }
-
-        override fun newArray(size: Int): Array<AudioFile?> {
-            return arrayOfNulls(size)
+            if (mAudioFiles.isEmpty() && !isAfterScan) {
+                MediaScannerConnection.scanFile(context, arrayOf(audioUri.path), null) { _, _ ->
+                    println("[hxg] scanFile -- thread: ${Thread.currentThread().name}")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        queryAudioFiles(context, dataContainer, true)
+                    }
+                }
+            } else {
+                mainScope.launch {
+                    mAudioFiles.clear()
+                    mAudioFiles.addAll(list)
+                }
+                println("[hxg] 查询完成: ${mAudioFiles.size} thread: ${Thread.currentThread().name}")
+            }
         }
     }
 }

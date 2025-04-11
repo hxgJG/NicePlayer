@@ -14,9 +14,9 @@ import com.hjq.permissions.XXPermissions
 import com.hxg.player.ui.theme.NicePlayerTheme
 import com.hxg.player.ui.widget.HomeView
 import com.hxg.player.util.toast
-import kotlinx.coroutines.runBlocking
 
 class HomeActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,9 +52,9 @@ class HomeActivity : ComponentActivity() {
             .permission(Permission.READ_MEDIA_AUDIO)
 //            .permission(Permission.READ_MEDIA_VIDEO)
             // 设置权限请求拦截器（局部设置）
-            //.interceptor(new PermissionInterceptor())
+            // .interceptor(new PermissionInterceptor())
             // 设置不触发错误检测机制（局部设置）
-            //.unchecked()
+            // .unchecked()
             .request(object : OnPermissionCallback {
 
                 override fun onGranted(permissions: MutableList<String>, allGranted: Boolean) {
@@ -78,8 +78,6 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun queryAudioFiles() {
-        runBlocking { FindAudioFiles.queryAudioFiles() }
+        FindAudioFiles.queryAudioFiles()
     }
-
-
 }

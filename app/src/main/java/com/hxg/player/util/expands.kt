@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import com.hxg.player.App
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -24,7 +26,6 @@ fun View.isShow(): Boolean {
 fun View.isHide(): Boolean {
     return !isShow()
 }
-
 
 @Composable
 fun colorTheme(@StyleableRes attrResId: Int): Color {
@@ -41,15 +42,29 @@ fun px2dp(px: Int): Dp {
 }
 
 fun toast(message: String, context: Context = App.context) {
-    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    if (Thread.currentThread().name == "main") {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    } else {
+        mainScope.launch {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 }
+
+val mainScope = MainScope()
 
 fun toast(strId: Int) {
     toast(message = App.context.getString(strId))
 }
 
 fun longToast(message: String, context: Context = App.context) {
-    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    if (Thread.currentThread().name == "main") {
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    } else {
+        mainScope.launch {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
 }
 
 fun longToast(strId: Int) {

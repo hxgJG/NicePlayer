@@ -81,7 +81,6 @@ dependencies {
 
     compileOnly(libs.androidx.media3.exoplayer)
 
-
     // test
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -101,4 +100,11 @@ dependencies {
     // optional - Kotlin Extensions and Coroutines support for Room
     implementation(libs.androidx.room.ktx)
 
+//    // Retrofit + Gson
+//    implementation(libs.retrofit)
+//    implementation(libs.converter.gson)
+//
+//    // OkHttp（用于拦截器、日志等）
+//    implementation(libs.okhttp)
+//    implementation(libs.logging.interceptor)
 }

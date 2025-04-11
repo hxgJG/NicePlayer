@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import com.hxg.media.player.XPlayer
+import com.hxg.player.entity.AudioFile
 import com.hxg.player.ui.theme.NicePlayerTheme
 import com.hxg.player.util.Constants
 
@@ -66,11 +67,12 @@ class AudioPlayerActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        audioFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        audioFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.extras?.getParcelable(Constants.EXTRA_INTENT_DATA, AudioFile::class.java)
-        else
+        } else {
             intent.extras?.getParcelable(Constants.EXTRA_INTENT_DATA)
-
+        }
+        playAfterPageLoad()
     }
 
     private fun play() {
@@ -79,6 +81,42 @@ class AudioPlayerActivity : ComponentActivity() {
             return
         }
 
+        if (player == null) {
+            initPlayer()
+        }
+
+        when {
+            player?.isPlaying() == true -> {
+                pause()
+            }
+
+            else -> {
+                if (mProgress > 0) {
+                    resume()
+                } else {
+                    realPlay()
+                }
+            }
+        }
+    }
+
+    private fun playAfterPageLoad() {
+        val data = audioFile ?: return
+        if (!data.isValid()) {
+            return
+        }
+
+        if (player == null) {
+            initPlayer()
+        }
+
+        if (player?.isPlaying() == true) {
+            return
+        }
+        player?.setData(Uri.parse(data.path))
+    }
+
+    private fun initPlayer() {
         if (player == null) {
             player = XPlayer(this)
             player!!.addListener(object : Listener {
@@ -99,8 +137,6 @@ class AudioPlayerActivity : ComponentActivity() {
                     super.onPositionDiscontinuity(oldPosition, newPosition, reason)
                     println("[hxg] oldPosition: $oldPosition, newPosition: $newPosition, reason: $reason")
                 }
-
-
             })
 
             player!!.setProgressListener(object : XPlayer.ProgressChangedListener {
@@ -109,20 +145,14 @@ class AudioPlayerActivity : ComponentActivity() {
                 }
             })
         }
+    }
 
-        when {
-            player?.isPlaying() == true -> {
-                pause()
-            }
+    private fun realPlay() {
+        player?.play()
+    }
 
-            else -> {
-                if (mProgress > 0) {
-                    player?.resume()
-                } else {
-                    player?.play(Uri.parse(data.path))
-                }
-            }
-        }
+    private fun resume() {
+        player?.resume()
     }
 
     private fun pause() {
@@ -221,11 +251,7 @@ class AudioPlayerActivity : ComponentActivity() {
     fun loadBitmapFromUri(uri: Uri?): ImageBitmap {
         val context = LocalContext.current
 
-        uri ?: return BitmapFactory.decodeResource(
-            context.resources,
-            R.drawable.ic_launcher_background
-        )
-            .asImageBitmap()
+        uri ?: return getDefaultBitmap()
 
         val inputStream = try {
             context.contentResolver.openInputStream(uri)
@@ -235,8 +261,10 @@ class AudioPlayerActivity : ComponentActivity() {
 
         return inputStream?.let {
             BitmapFactory.decodeStream(it).asImageBitmap()
-        } ?: BitmapFactory.decodeResource(context.resources, R.drawable.ic_launcher_background)
-            .asImageBitmap()
+        } ?: getDefaultBitmap()
+    }
+
+    private fun getDefaultBitmap(): ImageBitmap {
+        return BitmapFactory.decodeResource(resources, R.drawable.ic_launcher_round).asImageBitmap()
     }
 }
-

@@ -12,6 +12,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * 播放器
+ */
 class XPlayer(context: Context) {
     private var player: ExoPlayer? = null
     private var progressJob: Job? = null
@@ -25,11 +28,21 @@ class XPlayer(context: Context) {
             .apply { playWhenReady = true }
     }
 
-    fun play(uri: Uri) {
+    fun setData(uri: Uri) {
         val player = player ?: return
         player.setMediaItem(MediaItem.fromUri(uri))
-        player.prepare()
-        player.play()
+        startProgressListener()
+    }
+
+    fun play() {
+        player?.play()
+        player?.prepare()
+    }
+
+    fun setDataAndPlay(uri: Uri) {
+        val player = player ?: return
+        player.setMediaItem(MediaItem.fromUri(uri))
+        play()
         startProgressListener()
     }
 
@@ -79,7 +92,6 @@ class XPlayer(context: Context) {
         val player = player ?: return
         for (uri in list) {
             player.addMediaItem(MediaItem.fromUri(uri))
-
         }
         player.prepare()
         player.play()
