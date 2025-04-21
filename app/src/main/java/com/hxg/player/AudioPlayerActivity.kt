@@ -21,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -40,12 +41,18 @@ import com.hxg.media.player.XPlayer
 import com.hxg.player.entity.AudioFile
 import com.hxg.player.ui.theme.NicePlayerTheme
 import com.hxg.player.util.Constants
+import androidx.core.net.toUri
 
 class AudioPlayerActivity : ComponentActivity() {
     private var audioFile: AudioFile? = null
     private var player: XPlayer? = null
     private var isPlaying by mutableStateOf(false)
     private var mProgress by mutableLongStateOf(0)
+    private var mDuration by mutableLongStateOf(0)
+    private var isDragging by mutableStateOf(false)
+    private var sliderPosition by mutableStateOf(0f)
+    private var dragProgress by mutableLongStateOf(0)
+    private var hasStartedPlaying by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,13 +96,13 @@ class AudioPlayerActivity : ComponentActivity() {
             player?.isPlaying() == true -> {
                 pause()
             }
-
             else -> {
                 if (mProgress > 0) {
                     resume()
                 } else {
                     realPlay()
                 }
+                hasStartedPlaying = true
             }
         }
     }
@@ -113,37 +120,45 @@ class AudioPlayerActivity : ComponentActivity() {
         if (player?.isPlaying() == true) {
             return
         }
-        player?.setData(Uri.parse(data.path))
+        player?.setData(data.path.toUri())
     }
 
     private fun initPlayer() {
         if (player == null) {
-            player = XPlayer(this)
-            player!!.addListener(object : Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    super.onPlaybackStateChanged(playbackState)
-//                if (playbackState == ExoPlayer.STATE_ENDED) {
-//                    player.seekTo(0)
-//                    player.play()
-//                }
-                    println("[hxg] playbackState: $playbackState")
-                }
+            player = XPlayer(this).also {
+                it.addListener(object : Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        super.onPlaybackStateChanged(playbackState)
+                        when (playbackState) {
+                            Player.STATE_ENDED -> {
+                                isPlaying = false
+                                mProgress = 0
+                                sliderPosition = 0f
+                            }
+                        }
+                        println("[hxg] playbackState: $playbackState")
+                    }
 
-                override fun onPositionDiscontinuity(
-                    oldPosition: Player.PositionInfo,
-                    newPosition: Player.PositionInfo,
-                    reason: Int
-                ) {
-                    super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-                    println("[hxg] oldPosition: $oldPosition, newPosition: $newPosition, reason: $reason")
-                }
-            })
+                    override fun onPositionDiscontinuity(
+                        oldPosition: Player.PositionInfo,
+                        newPosition: Player.PositionInfo,
+                        reason: Int
+                    ) {
+                        super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                        println("[hxg] oldPosition: $oldPosition, newPosition: $newPosition, reason: $reason")
+                    }
+                })
 
-            player!!.setProgressListener(object : XPlayer.ProgressChangedListener {
-                override fun onProgressChanged(progress: Long, duration: Long) {
-                    mProgress = progress
-                }
-            })
+                it.setProgressListener(object : XPlayer.ProgressChangedListener {
+                    override fun onProgressChanged(progress: Long, duration: Long) {
+                        mProgress = progress
+                        mDuration = duration
+                        if (!isDragging) {
+                            sliderPosition = if (duration > 0) progress.toFloat() / duration.toFloat() else 0f
+                        }
+                    }
+                })
+            }
         }
     }
 
@@ -161,6 +176,25 @@ class AudioPlayerActivity : ComponentActivity() {
 
     private fun stop() {
         player?.stop()
+    }
+
+    private fun seekTo(position: Float) {
+        val duration = mDuration
+        if (duration > 0) {
+            val targetPosition = (position * duration).toLong()
+            player?.seekTo(targetPosition)
+            mProgress = targetPosition
+            
+            if (targetPosition >= duration) {
+                player?.pause()
+                isPlaying = false
+            } else {
+                if (hasStartedPlaying) {
+                    player?.play()
+                    isPlaying = true
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -217,8 +251,32 @@ class AudioPlayerActivity : ComponentActivity() {
                 fontSize = 12.sp
             )
             Spacer(modifier = Modifier.height(16.dp))
+            
+            // 添加进度条
+            Slider(
+                value = sliderPosition,
+                onValueChange = { newValue ->
+                    if (hasStartedPlaying) {
+                        isDragging = true
+                        sliderPosition = newValue.coerceIn(0f, 1f)
+                        dragProgress = (sliderPosition * mDuration).toLong()
+                    }
+                },
+                onValueChangeFinished = {
+                    if (hasStartedPlaying) {
+                        isDragging = false
+                        seekTo(sliderPosition)
+                        dragProgress = mProgress
+                    }
+                },
+                enabled = hasStartedPlaying,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
             Text(
-                text = "${formatTime(mProgress.toInt())}/${formatTime(data?.duration ?: 0)}",
+                text = "${formatTime(if (isDragging) dragProgress.toInt() else mProgress.toInt())}/${formatTime(mDuration.toInt())}",
                 modifier = Modifier.padding(start = 16.dp, bottom = 16.dp, end = 16.dp),
                 fontSize = 12.sp
             )
@@ -255,7 +313,7 @@ class AudioPlayerActivity : ComponentActivity() {
 
         val inputStream = try {
             context.contentResolver.openInputStream(uri)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
 
